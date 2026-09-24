@@ -6,7 +6,7 @@ schema_version = 1
 authors = ["Alan <alan_biju@outlook.com>"]
 repository = "https://github.com/waterrmalann/zed-gs-support"
 
-snippets = ["./snippets/google apps script.json"]
+snippets = "./snippets/google apps script.json"
 
 [language_servers.apps-script-vtsls]
 name = "Apps Script (vtsls)"
