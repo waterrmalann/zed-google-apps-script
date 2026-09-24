@@ -34,12 +34,10 @@ A [Zed](https://zed.dev) extension that adds support for
 
 ## Installation
 
-Open the Extensions page (`zed: extensions`), search for **Google Apps
-Script** and click **Install**.
-
-To install from source, clone this repository and run `zed: install dev
-extension` on the cloned directory. Rust must be installed through
-[rustup](https://rustup.rs).
+Clone this repository and run `zed: install dev extension` on the cloned
+directory. Rust must be installed through [rustup](https://rustup.rs). Once the
+extension is published to the Zed extension registry, it can also be installed
+from the Extensions page (`zed: extensions`).
 
 The language server needs Node.js, which Zed provides. The first time you
 open a `.gs` file, Zed installs `@vtsls/language-server` and
@@ -72,8 +70,9 @@ file, `.zed/settings.json`:
 ```
 
 The `appsscript.json` manifest marks the root of a script project. Every
-script file under the directory that contains it is part of the shared global
-scope. Without a manifest, only the files in the same directory are.
+`.gs` file under the directory that contains it is part of the shared global
+scope, and so is every `.js` file when you map `.js` files to this language.
+Without a manifest, only the files in the same directory are.
 
 ## Configuration
 
@@ -166,6 +165,9 @@ shown when inlay hints are enabled in Zed:
 ```
 
 ### Using your own vtsls
+
+The Apps Script plugin is tested with the vtsls version the extension
+installs (0.3.0, which bundles TypeScript 5.9). Other versions are untested.
 
 ```json
 {
