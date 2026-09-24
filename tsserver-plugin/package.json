@@ -1,0 +1,17 @@
+{
+  "name": "zed-apps-script-tsserver-plugin",
+  "private": true,
+  "description": "Development package for the tsserver plugin bundled with the Google Apps Script Zed extension.",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@types/google-apps-script": "^2.0.13",
+    "@vtsls/language-server": "0.3.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

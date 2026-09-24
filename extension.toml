@@ -1,0 +1,21 @@
+id = "google-apps-script"
+name = "Google Apps Script"
+description = "Google Apps Script (.gs) support, with Apps Script-aware IntelliSense."
+version = "0.1.0"
+schema_version = 1
+authors = ["Alan <alan_biju@outlook.com>"]
+repository = "https://github.com/waterrmalann/zed-gs-support"
+
+snippets = ["./snippets/google apps script.json"]
+
+[language_servers.apps-script-vtsls]
+name = "Apps Script (vtsls)"
+languages = ["Google Apps Script"]
+
+[language_servers.apps-script-vtsls.language_ids]
+"Google Apps Script" = "javascript"
+
+# tree-sitter-javascript v0.25.0
+[grammars.javascript]
+repository = "https://github.com/tree-sitter/tree-sitter-javascript"
+rev = "44c892e0be055ac465d5eeddae6d3e194424e7de"

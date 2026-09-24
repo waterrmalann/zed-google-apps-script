@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  extension:
+    name: Extension (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+      - run: cargo clippy --target wasm32-wasip2 -- -D warnings
+      - run: cargo test
+      - run: cargo build --release --target wasm32-wasip2
+
+  tsserver-plugin:
+    name: tsserver plugin
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tsserver-plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+
+  queries:
+    name: Tree-sitter queries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --global tree-sitter-cli@0.25
+      - run: scripts/check-queries.sh
