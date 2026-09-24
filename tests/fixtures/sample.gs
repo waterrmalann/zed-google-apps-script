@@ -31,6 +31,11 @@ function doGet(e) {
   return template.evaluate().setTitle('Hello');
 }
 
+function showSidebar() {
+  const html = HtmlService.createHtmlOutput('<b>Sidebar</b>').setTitle('Tools');
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
 function doPost(e) {
   const payload = JSON.parse(e.postData.contents);
   return ContentService.createTextOutput(JSON.stringify({ ok: true, payload }))

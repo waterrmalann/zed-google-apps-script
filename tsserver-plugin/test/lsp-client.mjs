@@ -10,6 +10,7 @@ export class LspClient {
   #nextId = 0;
   #pending = new Map();
   #settings;
+  #versions = new Map();
   diagnostics = new Map();
 
   constructor(command, args, { cwd, settings }) {
@@ -48,6 +49,15 @@ export class LspClient {
       },
     });
     return uri;
+  }
+
+  /** Replaces the text of an open document, as an edit in the editor would. */
+  change(filePath, text) {
+    this.#versions.set(filePath, (this.#versions.get(filePath) ?? 1) + 1);
+    this.notify("textDocument/didChange", {
+      textDocument: { uri: pathToFileURL(filePath).href, version: this.#versions.get(filePath) },
+      contentChanges: [{ text }],
+    });
   }
 
   /** Hover text at the end of the first occurrence of `marker` in the file. */

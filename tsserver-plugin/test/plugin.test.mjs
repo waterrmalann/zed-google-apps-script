@@ -219,3 +219,94 @@ test("reports browser globals, which Apps Script does not have", async () => {
     await client.shutdown();
   }
 });
+
+test("keeps a library list the user configured", async () => {
+  const root = createWorkspace("user-lib", {
+    "appsscript.json": MANIFEST,
+    "Code.gs": "function main() {\n  return window;\n}\n",
+  });
+  const code = path.join(root, "Code.gs");
+  const client = await startServer(root);
+  try {
+    await client.request("workspace/executeCommand", {
+      command: "typescript.tsserverRequest",
+      arguments: [
+        "compilerOptionsForInferredProjects",
+        { options: { allowJs: true, lib: ["lib.es2022.d.ts", "lib.dom.d.ts"] } },
+      ],
+    });
+    client.open(code);
+    assert.match(await settledHover(client, code, "windo"), /var window: Window/);
+  } finally {
+    await client.shutdown();
+  }
+});
+
+test("leaves projects with a jsconfig.json alone", async () => {
+  const root = createWorkspace("configured", {
+    "appsscript.json": MANIFEST,
+    "jsconfig.json": JSON.stringify({ compilerOptions: { checkJs: false } }),
+    "Main.js": "function main() {\n  return window;\n}\n",
+    "Code.gs": "function fromGs() {}\n",
+  });
+  const main = path.join(root, "Main.js");
+  const client = await startServer(root);
+  try {
+    client.open(main);
+    assert.match(await settledHover(client, main, "windo"), /var window: Window/);
+    const scripts = (await client.projectFiles(main)).filter((file) => /\.(gs|js)$/.test(file));
+    assert.deepEqual(scripts, [main]);
+  } finally {
+    await client.shutdown();
+  }
+});
+
+test("picks up script files created after the project was loaded", async () => {
+  const root = createWorkspace("new-file", {
+    "appsscript.json": MANIFEST,
+    "Code.gs": "function main() {\n  return later();\n}\n",
+  });
+  const code = path.join(root, "Code.gs");
+  const client = await startServer(root);
+  try {
+    client.open(code);
+    assert.match(await settledHover(client, code, "late"), /```typescript\nany\n```/);
+
+    fs.writeFileSync(
+      path.join(root, "Later.gs"),
+      "/** @return {number} */\nfunction later() {\n  return 1;\n}\n",
+    );
+    // The plugin rescans a project at most every two seconds, when an edit
+    // marks it as changed.
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    const edited = "function main() {\n  return later() + 0;\n}\n";
+    fs.writeFileSync(code, edited);
+    client.change(code, edited);
+    assert.match(await settledHover(client, code, "late"), /function later\(\): number/);
+  } finally {
+    await client.shutdown();
+  }
+});
+
+test("skips node_modules and hidden directories", async () => {
+  const root = createWorkspace("skipped-directories", {
+    "appsscript.json": MANIFEST,
+    "Code.gs": "function main() {}\n",
+    "lib/Utils.gs": "function util() {}\n",
+    "node_modules/some-package/Dependency.gs": "function dependency() {}\n",
+    ".git/Hidden.gs": "function hidden() {}\n",
+  });
+  const code = path.join(root, "Code.gs");
+  const client = await startServer(root);
+  try {
+    client.open(code);
+    await settledHover(client, code, "mai");
+    const scripts = (await client.projectFiles(code))
+      .filter((file) => file.endsWith(".gs"))
+      .map((file) => path.relative(root, file))
+      .sort();
+    assert.deepEqual(scripts, ["Code.gs", path.join("lib", "Utils.gs")]);
+  } finally {
+    await client.shutdown();
+  }
+});

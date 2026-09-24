@@ -151,39 +151,44 @@ impl zed::Extension for GoogleAppsScriptExtension {
         _language_server_id: &LanguageServerId,
         completion: Completion,
     ) -> Option<CodeLabel> {
-        let highlight_name = match completion.kind? {
-            CompletionKind::Class
-            | CompletionKind::Interface
-            | CompletionKind::Enum
-            | CompletionKind::Constructor => "type",
-            CompletionKind::Constant => "constant",
-            CompletionKind::Function | CompletionKind::Method => "function",
-            CompletionKind::Property | CompletionKind::Field => "property",
-            CompletionKind::Variable => "variable",
-            _ => return None,
-        };
-
-        let label_len = completion.label.len();
-        let mut spans = vec![CodeLabelSpan::literal(
-            completion.label,
-            Some(highlight_name.to_string()),
-        )];
-        // Same layout as Zed's built-in JavaScript support: the module an
-        // auto-import comes from, or the type detail, after the name.
-        let detail = completion
-            .label_details
-            .and_then(|details| details.description)
-            .or(completion.detail);
-        if let Some(detail) = detail.filter(|detail| !detail.is_empty()) {
-            spans.push(CodeLabelSpan::literal(format!(" {detail}"), None));
-        }
-
-        Some(CodeLabel {
-            code: String::new(),
-            spans,
-            filter_range: (0..label_len as u32).into(),
-        })
+        completion_label(completion)
     }
+}
+
+/// Label for a completion item: its name, highlighted by kind, then its detail.
+fn completion_label(completion: Completion) -> Option<CodeLabel> {
+    let highlight_name = match completion.kind? {
+        CompletionKind::Class
+        | CompletionKind::Interface
+        | CompletionKind::Enum
+        | CompletionKind::Constructor => "type",
+        CompletionKind::Constant => "constant",
+        CompletionKind::Function | CompletionKind::Method => "function",
+        CompletionKind::Property | CompletionKind::Field => "property",
+        CompletionKind::Variable => "variable",
+        _ => return None,
+    };
+
+    let label_len = completion.label.len();
+    let mut spans = vec![CodeLabelSpan::literal(
+        completion.label,
+        Some(highlight_name.to_string()),
+    )];
+    // Same layout as Zed's built-in JavaScript support: the module an
+    // auto-import comes from, or the type detail, after the name.
+    let detail = completion
+        .label_details
+        .and_then(|details| details.description)
+        .or(completion.detail);
+    if let Some(detail) = detail.filter(|detail| !detail.is_empty()) {
+        spans.push(CodeLabelSpan::literal(format!(" {detail}"), None));
+    }
+
+    Some(CodeLabel {
+        code: String::new(),
+        spans,
+        filter_range: (0..label_len as u32).into(),
+    })
 }
 
 fn file_exists(path: &str) -> bool {
@@ -411,6 +416,157 @@ mod tests {
             .as_array()
             .unwrap();
         assert_eq!(plugins.len(), 2);
+    }
+
+    #[test]
+    fn ensure_tsserver_plugin_replaces_invalid_plugin_setting() {
+        let mut configuration = json!({ "vtsls": { "tsserver": { "globalPlugins": "other" } } });
+        ensure_tsserver_plugin(&mut configuration).unwrap();
+        let plugins = configuration["vtsls"]["tsserver"]["globalPlugins"]
+            .as_array()
+            .unwrap();
+        assert_eq!(plugins.len(), 1);
+        assert_eq!(plugins[0]["name"], PLUGIN_NAME);
+    }
+
+    fn completion(label: &str, kind: Option<CompletionKind>, detail: Option<&str>) -> Completion {
+        Completion {
+            label: label.to_string(),
+            label_details: None,
+            detail: detail.map(str::to_string),
+            kind,
+            insert_text_format: None,
+        }
+    }
+
+    /// The label's spans as `(text, highlight name)` pairs.
+    fn spans(label: &CodeLabel) -> Vec<(String, Option<String>)> {
+        label
+            .spans
+            .iter()
+            .map(|span| match span {
+                CodeLabelSpan::Literal(literal) => {
+                    (literal.text.clone(), literal.highlight_name.clone())
+                }
+                CodeLabelSpan::CodeRange(_) => panic!("unexpected code range span"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn completion_label_highlights_name_by_kind() {
+        let cases = [
+            (CompletionKind::Class, "type"),
+            (CompletionKind::Interface, "type"),
+            (CompletionKind::Enum, "type"),
+            (CompletionKind::Constructor, "type"),
+            (CompletionKind::Constant, "constant"),
+            (CompletionKind::Function, "function"),
+            (CompletionKind::Method, "function"),
+            (CompletionKind::Property, "property"),
+            (CompletionKind::Field, "property"),
+            (CompletionKind::Variable, "variable"),
+        ];
+        for (kind, highlight) in cases {
+            let label = completion_label(completion("getRange", Some(kind), None)).unwrap();
+            assert_eq!(
+                spans(&label),
+                [("getRange".to_string(), Some(highlight.to_string()))]
+            );
+        }
+    }
+
+    #[test]
+    fn completion_label_appends_detail_and_filters_on_name() {
+        let label = completion_label(completion(
+            "getActiveSheet",
+            Some(CompletionKind::Method),
+            Some("GoogleAppsScript.Spreadsheet.Sheet"),
+        ))
+        .unwrap();
+        assert_eq!(
+            spans(&label),
+            [
+                ("getActiveSheet".to_string(), Some("function".to_string())),
+                (" GoogleAppsScript.Spreadsheet.Sheet".to_string(), None),
+            ]
+        );
+        assert_eq!(label.filter_range.start, 0);
+        assert_eq!(label.filter_range.end, "getActiveSheet".len() as u32);
+    }
+
+    #[test]
+    fn completion_label_skips_empty_detail() {
+        let label = completion_label(completion(
+            "Logger",
+            Some(CompletionKind::Variable),
+            Some(""),
+        ))
+        .unwrap();
+        assert_eq!(
+            spans(&label),
+            [("Logger".to_string(), Some("variable".to_string()))]
+        );
+    }
+
+    #[test]
+    fn completion_label_leaves_other_kinds_to_zed() {
+        for kind in [
+            Some(CompletionKind::Keyword),
+            Some(CompletionKind::Snippet),
+            None,
+        ] {
+            assert!(completion_label(completion("function", kind, None)).is_none());
+        }
+    }
+
+    /// Value of the first `key = "value"` line in a TOML file.
+    fn toml_string(contents: &str, key: &str) -> String {
+        contents
+            .lines()
+            .find_map(|line| line.strip_prefix(&format!("{key} = \"")))
+            .and_then(|rest| rest.strip_suffix('"'))
+            .unwrap_or_else(|| panic!("missing {key}"))
+            .to_string()
+    }
+
+    #[test]
+    fn snippets_are_scoped_to_the_language() {
+        // Zed scopes a snippet file to the language named by its file name, in
+        // lower case.
+        let language = toml_string(
+            include_str!("../languages/google-apps-script/config.toml"),
+            "name",
+        );
+        let snippets = toml_string(include_str!("../extension.toml"), "snippets");
+        assert_eq!(
+            snippets,
+            format!("./snippets/{}.json", language.to_lowercase())
+        );
+    }
+
+    #[test]
+    fn snippets_are_well_formed() {
+        let snippets: Value =
+            zed::serde_json::from_str(include_str!("../snippets/google apps script.json")).unwrap();
+        let snippets = snippets.as_object().unwrap();
+        assert!(!snippets.is_empty());
+
+        let mut prefixes = std::collections::HashSet::new();
+        for (name, snippet) in snippets {
+            let prefix = snippet["prefix"]
+                .as_str()
+                .unwrap_or_else(|| panic!("{name}: prefix"));
+            assert!(prefixes.insert(prefix), "{name}: duplicate prefix {prefix}");
+            let body = snippet["body"]
+                .as_array()
+                .unwrap_or_else(|| panic!("{name}: body"));
+            assert!(
+                !body.is_empty() && body.iter().all(Value::is_string),
+                "{name}: body must be a list of lines"
+            );
+            assert!(snippet["description"].is_string(), "{name}: description");
+        }
     }
 
     #[test]
