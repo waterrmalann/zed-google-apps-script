@@ -1,0 +1,7 @@
+# Rust build output
+/target
+# Written by Zed when the extension is installed as a dev extension
+/grammars
+/extension.wasm
+# Development dependencies of the tsserver plugin
+node_modules/

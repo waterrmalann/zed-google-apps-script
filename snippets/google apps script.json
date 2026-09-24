@@ -1,0 +1,171 @@
+{
+  "onOpen simple trigger": {
+    "prefix": "onOpen",
+    "body": [
+      "/** @param {GoogleAppsScript.Events.${1|SheetsOnOpen,DocsOnOpen,SlidesOnOpen,FormsOnOpen|}} e */",
+      "function onOpen(e) {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Runs when a user opens a spreadsheet, document, presentation or form they can edit"
+  },
+  "onEdit simple trigger": {
+    "prefix": "onEdit",
+    "body": [
+      "/** @param {GoogleAppsScript.Events.SheetsOnEdit} e */",
+      "function onEdit(e) {",
+      "\tconst range = e.range;",
+      "\t$0",
+      "}"
+    ],
+    "description": "Runs when a user changes a value in a spreadsheet"
+  },
+  "onSelectionChange simple trigger": {
+    "prefix": "onSelectionChange",
+    "body": [
+      "function onSelectionChange(e) {",
+      "\tconst range = e.range;",
+      "\t$0",
+      "}"
+    ],
+    "description": "Runs when a user changes the selection in a spreadsheet"
+  },
+  "onInstall simple trigger": {
+    "prefix": "onInstall",
+    "body": [
+      "function onInstall(e) {",
+      "\tonOpen(e);",
+      "\t$0",
+      "}"
+    ],
+    "description": "Runs when a user installs an Editor add-on"
+  },
+  "doGet web app entry point": {
+    "prefix": "doGet",
+    "body": [
+      "/** @param {GoogleAppsScript.Events.DoGet} e */",
+      "function doGet(e) {",
+      "\treturn HtmlService.createHtmlOutputFromFile('${1:Index}')",
+      "\t\t.setTitle('${2:Title}');",
+      "}"
+    ],
+    "description": "Serves an HTML page when the web app receives a GET request"
+  },
+  "doPost web app entry point": {
+    "prefix": "doPost",
+    "body": [
+      "/** @param {GoogleAppsScript.Events.DoPost} e */",
+      "function doPost(e) {",
+      "\tconst data = JSON.parse(e.postData.contents);",
+      "\t$0",
+      "\treturn ContentService.createTextOutput(JSON.stringify(${1:{ ok: true \\}}))",
+      "\t\t.setMimeType(ContentService.MimeType.JSON);",
+      "}"
+    ],
+    "description": "Handles a POST request to the web app and responds with JSON"
+  },
+  "Custom function": {
+    "prefix": "customfunction",
+    "body": [
+      "/**",
+      " * ${2:Description of the function.}",
+      " *",
+      " * @param {${3:number}} ${4:input} ${5:Description of the input.}",
+      " * @return ${6:The result.}",
+      " * @customfunction",
+      " */",
+      "function ${1:MYFUNCTION}(${4:input}) {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Custom function that can be used in Google Sheets formulas"
+  },
+  "Custom menu": {
+    "prefix": "menu",
+    "body": [
+      "function onOpen(e) {",
+      "\t${1|SpreadsheetApp,DocumentApp,SlidesApp,FormApp|}.getUi()",
+      "\t\t.createMenu('${2:Custom Menu}')",
+      "\t\t.addItem('${3:Run}', '${4:functionName}')",
+      "\t\t.addToUi();",
+      "}"
+    ],
+    "description": "Adds a custom menu when the file is opened"
+  },
+  "Include HTML file": {
+    "prefix": "include",
+    "body": [
+      "/** @param {string} filename */",
+      "function include(filename) {",
+      "\treturn HtmlService.createHtmlOutputFromFile(filename).getContent();",
+      "}"
+    ],
+    "description": "Helper for <?!= include('File') ?> scriptlets in HTML templates"
+  },
+  "OnlyCurrentDoc annotation": {
+    "prefix": "onlycurrentdoc",
+    "body": [
+      "/**",
+      " * @OnlyCurrentDoc",
+      " */"
+    ],
+    "description": "Limits authorization to the file the script is bound to"
+  },
+  "Script lock": {
+    "prefix": "lock",
+    "body": [
+      "const lock = LockService.getScriptLock();",
+      "lock.waitLock(${1:30000});",
+      "try {",
+      "\t$0",
+      "} finally {",
+      "\tlock.releaseLock();",
+      "}"
+    ],
+    "description": "Prevents concurrent runs of a section of code"
+  },
+  "Script property": {
+    "prefix": "props",
+    "body": [
+      "const ${1:value} = PropertiesService.getScriptProperties().getProperty('${2:KEY}');"
+    ],
+    "description": "Reads a script property"
+  },
+  "Cached value": {
+    "prefix": "cache",
+    "body": [
+      "const cache = CacheService.getScriptCache();",
+      "let ${1:value} = cache.get('${2:key}');",
+      "if (${1:value} === null) {",
+      "\t${1:value} = ${3:computeValue()};",
+      "\tcache.put('${2:key}', ${1:value}, ${4:600});",
+      "}"
+    ],
+    "description": "Reads a value from the script cache, computing it on a miss"
+  },
+  "UrlFetchApp request": {
+    "prefix": "fetch",
+    "body": [
+      "const response = UrlFetchApp.fetch('${1:https://example.com}', {",
+      "\tmethod: '${2|get,post,put,patch,delete|}',",
+      "\tcontentType: 'application/json',",
+      "\tmuteHttpExceptions: true,",
+      "});",
+      "if (response.getResponseCode() !== 200) {",
+      "\tthrow new Error(response.getContentText());",
+      "}",
+      "const ${3:data} = JSON.parse(response.getContentText());"
+    ],
+    "description": "Makes an HTTP request and parses the JSON response"
+  },
+  "Time-driven trigger": {
+    "prefix": "trigger",
+    "body": [
+      "ScriptApp.newTrigger('${1:functionName}')",
+      "\t.timeBased()",
+      "\t.${2|everyMinutes,everyHours,everyDays,everyWeeks|}(${3:1})",
+      "\t.create();"
+    ],
+    "description": "Creates an installable time-driven trigger"
+  }
+}
